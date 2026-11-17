@@ -1,0 +1,38 @@
+name: Generate PWA icons
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'icon.svg'
+      - '.github/workflows/generate-icons.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  icons:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Generate PNG icons from the app logo
+        run: |
+          npm install --no-save sharp
+          node -e "const sharp=require('sharp'); Promise.all([sharp('icon.svg').resize(192,192).png().toFile('icon-192.png'), sharp('icon.svg').resize(512,512).png().toFile('icon-512.png')]).catch(e=>{console.error(e);process.exit(1)})"
+      - name: Commit generated icons
+        run: |
+          if [ -n "$(git status --porcelain icon-192.png icon-512.png)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add icon-192.png icon-512.png
+            git commit -m "Generate installable PWA PNG icons"
+            git push
+          else
+            echo "Icons are already up to date."
+          fi
